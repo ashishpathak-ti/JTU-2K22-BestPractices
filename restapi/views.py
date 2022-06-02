@@ -8,14 +8,14 @@ import urllib.request
 from datetime import datetime
 
 from django.http import HttpResponse
-from django.contrib.auth.models import User
+from django.contrib.auth.models import TIME_OUT
 
 # Create your views here.
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, authentication_classes, permission_classes, action
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.r
-
+from restapi.const.py import 
 
 logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=logging.DEBUG)
 
@@ -313,9 +313,12 @@ def multiThreadedReader(urls, num_threads):
     """
     logging.info("Reading files through HTTP")
     result = []
-    for url in urls:
-        data = reader(url, 60)
-        data = data.decode('utf-8')
-        result.extend(data.split("\n"))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = {executor.submit(reader, url, TIME_OUT) : url for url in urls}
+        for future in concurrent.futures.as_completed(futures):
+            data = reader(url, TIME_OUT)
+            data = data.decode('utf-8')
+            result.extend(data.split("\n"))
     result = sorted(result, key=lambda elem:elem[1])
+    logging.info("multiThreader executed for Reader")
     return result
